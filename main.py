@@ -1,23 +1,21 @@
 #!/usr/bin/env python3
-"""
-AI Study Automation - CLI Version
-Can also be used via Telegram bot (see telegram_bot.py)
-"""
-
 import asyncio
 import sys
+import re
+from typing import Dict
 from automation_core import UserContext, process_user, UserProgress
+from alive import keep_alive
 
-# Configuration
+# ── Configuration ─────────────────────────────────────────────────────────────
 FAST_MODE = "--fast" in sys.argv or "-f" in sys.argv
 sys.argv = [arg for arg in sys.argv if arg not in ["--fast", "-f"]]
 
 if len(sys.argv) < 2:
     print("Usage:")
-    print("  python3 main.py tokens.txt [--fast]       ← recommended")
+    print("  python3 main.py tokens.txt [--fast]        ← recommended")
     print("  python3 main.py 'Bearer TOKEN1' 'Bearer TOKEN2' [--fast]")
     print("\nTelegram Bot:")
-    print("  python3 telegram_bot.py                   ← start bot")
+    print("  python3 telegram_bot.py                    ← start bot")
     sys.exit(1)
 
 # ── Token parsing ─────────────────────────────────────────────────────────────
@@ -103,13 +101,6 @@ class StatusDisplay:
         return f"{bar} {progress:5.1f}%"
 
     def _write_line(self, user_idx: int):
-        """
-        Cursor is always parked at the line AFTER the final "===".
-        To reach User[user_idx]:
-          go up  (num_users - user_idx) + FOOTER_LINES  lines
-          overwrite the line
-          go back down the same amount
-        """
         lines_up = (self.num_users - user_idx) + self.FOOTER_LINES
         line = self._format_line(user_idx)
         sys.stdout.write(f"\033[{lines_up}A\r{line}\033[{lines_up}B\r")
@@ -152,15 +143,39 @@ async def process_user_cli(user_idx: int, token: str):
     await process_user(ctx, cert_callback)
 
 
+async def recursive_action():
+    """
+    Core action that creates a task of itself to prevent sleeping.
+    """
+    global status_display
+    
+    # Run all users simultaneously
+    tasks = [process_user_cli(i, token) for i, token in enumerate(TOKENS)]
+    await asyncio.gather(*tasks)
+    
+    # Cycle delay before restarting (adjust as needed)
+    await asyncio.sleep(60)
+    
+    # Self-calling logic: Schedule next run on the event loop
+    asyncio.create_task(recursive_action())
+
+
 async def main():
     global status_display
+    
+    # 1. Start the Flask server in a background thread
+    keep_alive()
+
+    # 2. Setup the UI
     status_display = StatusDisplay(len(TOKENS))
     status_display.initial_render()
 
-    tasks = [process_user_cli(i, token) for i, token in enumerate(TOKENS)]
-    await asyncio.gather(*tasks)
+    # 3. Start the recursive processing loop
+    await recursive_action()
 
-    print(f"\n✅ All {len(TOKENS)} users processed!")
+    # 4. Final safety net to keep the event loop alive
+    while True:
+        await asyncio.sleep(3600)
 
 
 if __name__ == "__main__":
