@@ -27,6 +27,10 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 logger = logging.getLogger(__name__)
 
 # Bot initialization
+TOKEN = os.getenv("TOKEN")
+    if not TOKEN:
+        logging.error("BOT_TOKEN is missing! Add it to Render Environment Variables.")
+        return
 bot = Bot(token=BOT_TOKEN)
 storage = MemoryStorage()
 dp = Dispatcher(storage=storage)
@@ -423,8 +427,6 @@ async def main():
 
         # 2. START THE BOT
         logger.info("Initializing bot...")
-        bot = Bot(token=BOT_TOKEN)
-        dp = Dispatcher()
 
         # Import and register your routers/handlers here
         # from handlers import router
