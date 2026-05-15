@@ -30,7 +30,6 @@ logger = logging.getLogger(__name__)
 TOKEN = os.getenv("TOKEN")
 if not TOKEN:
         logging.error("BOT_TOKEN is missing! Add it to Render Environment Variables.")
-        return
 bot = Bot(token=BOT_TOKEN)
 storage = MemoryStorage()
 dp = Dispatcher(storage=storage)
