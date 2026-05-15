@@ -94,10 +94,15 @@ class AdaptiveTiming:
             self.between_courses = 2
             self.aggression = 1.5
         else:
-            self.min_sleep = 10
-            self.max_sleep = 60
-            self.between_lessons = 3
-            self.between_courses = 8
+            # self.min_sleep = 10
+            # self.max_sleep = 60
+            # self.between_lessons = 3
+            # self.between_courses = 8
+            # self.aggression = 0.7
+            self.min_sleep = 3
+            self.max_sleep = 15
+            self.between_lessons = 0.5
+            self.between_courses = 2
             self.aggression = 0.7
 
     def record_success(self, response_time: float):
