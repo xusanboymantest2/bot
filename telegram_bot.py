@@ -230,7 +230,7 @@ async def certificate_callback(cert_id: str, full_name: str, user_idx: int, chat
         text = (
             f"🎉 **Certificate Obtained!**\n\n"
             f"👤 User [{user_idx}]: {full_name}\n"
-            f"🔗 [View Certificate](https://omp.aistudy.uz/certificate?id={cert_id})"
+            f"🔗 https://omp.aistudy.uz/certificate?id={cert_id}"
         )
         await bot.send_message(chat_id=chat_id, text=text, parse_mode="Markdown")
         logger.info(f"Certificate sent for user {user_idx} in chat {chat_id}")
