@@ -12,7 +12,7 @@ import logging
 import re
 from datetime import datetime
 from typing import Dict, Optional
-
+from alive import keep_alive
 from aiogram import Bot, Dispatcher, types, F
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
@@ -416,6 +416,18 @@ async def main():
     logger.info(f"📱 Admins: {ADMIN_IDS}")
     
     try:
+        # 1. Start the Flask server for Render
+        print("[+] Starting Keep-Alive server...")
+        keep_alive()
+
+        # 2. Start the Bot Polling
+        logging.info("🤖 Starting AI Study Bot...")
+        bot = Bot(token="YOUR_BOT_TOKEN")
+        dp = Dispatcher()
+    
+        # Add your handlers here
+        # dp.include_router(your_router)
+
         await dp.start_polling(bot)
     finally:
         await bot.session.close()
