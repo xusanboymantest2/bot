@@ -32,7 +32,7 @@ from config import BOT_TOKEN, ADMIN_IDS
 # ================= CONFIGURATION =================
 # Set this to 2 or 3 seconds to avoid Telegram Flood Limits
 # 3 seconds is recommended for stability in 2026
-DASHBOARD_UPDATE_INTERVAL = 3 
+DASHBOARD_UPDATE_INTERVAL = 2
 MAX_STATUS_LENGTH = 35
 PROGRESS_BAR_LENGTH = 15
 # =================================================
