@@ -5,15 +5,12 @@ import os
 app = Flask('')
 
 @app.route('/')
-def home():
-    return "I am alive!"
-
-def run():
-    # Render automatically provides a PORT environment variable
-    port = int(os.environ.get("PORT", 8080))
-    app.run(host='0.0.0.0', port=port)
+def main():
+    return "OK"
 
 def keep_alive():
-    t = Thread(target=run)
+    # Use 0.0.0.0 to make it accessible to Render's health check
+    port = int(os.environ.get("PORT", 8080))
+    t = Thread(target=lambda: app.run(host="0.0.0.0", port=port))
     t.daemon = True
     t.start()
