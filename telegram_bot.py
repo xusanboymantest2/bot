@@ -416,18 +416,21 @@ async def main():
     logger.info(f"📱 Admins: {ADMIN_IDS}")
     
     try:
-        # 1. Start the Flask server for Render
-        print("[+] Starting Keep-Alive server...")
+        # 1. START THE WEB SERVER
+        # This opens the port Render is looking for
+        logger.info("Starting keep-alive server...")
         keep_alive()
 
-        # 2. Start the Bot Polling
-        logging.info("🤖 Starting AI Study Bot...")
-        bot = Bot(token="YOUR_BOT_TOKEN")
+        # 2. START THE BOT
+        logger.info("Initializing bot...")
+        bot = Bot(token=BOT_TOKEN)
         dp = Dispatcher()
-    
-        # Add your handlers here
-        # dp.include_router(your_router)
 
+        # Import and register your routers/handlers here
+        # from handlers import router
+        # dp.include_router(router)
+    
+        logger.info("Bot is now polling...")
         await dp.start_polling(bot)
     finally:
         await bot.session.close()
