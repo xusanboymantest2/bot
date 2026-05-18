@@ -531,65 +531,72 @@ async def get_all_courses(ctx: UserContext) -> List[Dict]:
 
 async def process_user(user_idx: int, token: str):
     ctx = UserContext(user_idx, token)
+    MAX_ATTEMPTS = 3
+    start_time = time.time()
+    TIMEOUT_SECONDS = 3600 * 2  # Optional 2-hour timeout per user
+
     try:
         await ctx.init_session()
-        await status_display.update_user(user_idx, "Checking certificate...", None, 0, 0)
+        
+        for attempt in range(1, MAX_ATTEMPTS + 1):
+            # 1. Initial Certificate Check
+            await status_display.update_user(user_idx, f"Check Attempt {attempt}/{MAX_ATTEMPTS}", None, 0, 0)
+            cert = await check_certificate(ctx)
+            if cert:
+                cert_id = cert.get("id")
+                full_name = cert.get("userFullName", "Unknown")
+                await status_display.update_user(user_idx, f"✅ CERT: {full_name}", None, 100.0, 0)
+                await send_telegram(cert_id, full_name, user_idx)
+                return
 
-        cert = await check_certificate(ctx)
-        if cert:
-            cert_id = cert.get("id")
-            full_name = cert.get("userFullName", "Unknown")
-            await status_display.update_user(user_idx, f"✅ CERT: {full_name}", None, 100.0, 0)
-            await send_telegram(cert_id, full_name, user_idx)
-            return
+            # 2. Fetch and Process Courses
+            await status_display.update_user(user_idx, f"Fetching (Try {attempt})", None, 0, 0)
+            courses = await get_all_courses(ctx)
 
-        await status_display.update_user(user_idx, "Fetching courses...", None, 0, 0)
-        courses = await get_all_courses(ctx)
+            if not courses:
+                await status_display.update_user(user_idx, "❌ No courses found", None, 0, 0)
+                # If no courses are even visible, retrying might not help, 
+                # but we'll wait and try again anyway just in case of API lag.
+            else:
+                for course in courses:
+                    course_id = course["id"]
+                    course_name = course.get("courseName", {}).get("uz", f"Course {course_id}")
 
-        if not courses:
-            await status_display.update_user(user_idx, "❌ No courses / expired", None, 0, 0)
-            return
+                    await status_display.update_user(user_idx, f"▶ Attempt {attempt}: {course_name[:30]}", None, 0, 0)
+                    await start_course(ctx, course_id)
+                    
+                    tree = await get_course_tree(ctx, course_id)
+                    for node in tree:
+                        await process_tree_node(ctx, node)
+                    
+                    await asyncio.sleep(ctx.timing.get_sleep_time(2))
 
-        for course in courses:
-            try:
-                course_id   = course["id"]
-                course_name = course.get("courseName", {}).get("uz", f"Course {course_id}")
+            # 3. Final Check for this attempt
+            cert = await check_certificate(ctx)
+            if cert:
+                cert_id = cert.get("id")
+                full_name = cert.get("userFullName", "Unknown")
+                await status_display.update_user(user_idx, f"✅ CERT: {full_name}", None, 100.0, 0)
+                await send_telegram(cert_id, full_name, user_idx)
+                return
 
-                await status_display.update_user(user_idx, f"▶ {course_name[:35]}", None, 0, 0)
-                await start_course(ctx, course_id)
-                await asyncio.sleep(ctx.timing.get_sleep_time(1))
+            # 4. Preparation for next attempt
+            if attempt < MAX_ATTEMPTS:
+                wait_time = 30 if FAST_MODE else 60
+                await status_display.update_user(user_idx, f"Retrying attempt {attempt+1}...", None, 0, wait_time)
+                await asyncio.sleep(wait_time)
+            
+            # Global Timeout Safety
+            if (time.time() - start_time) > TIMEOUT_SECONDS:
+                await status_display.update_user(user_idx, "❌ Global Timeout reached", None, 0, 0)
+                break
 
-                tree = await get_course_tree(ctx, course_id)
-                for node in tree:
-                    await process_tree_node(ctx, node)
-
-                await asyncio.sleep(ctx.timing.get_sleep_time(1))
-                cert = await check_certificate(ctx)
-                if cert:
-                    cert_id   = cert.get("id")
-                    full_name = cert.get("userFullName", "Unknown")
-                    await status_display.update_user(user_idx, f"✅ CERT: {full_name}", None, 100.0, 0)
-                    await send_telegram(cert_id, full_name, user_idx)
-                    return
-
-                await asyncio.sleep(ctx.timing.get_sleep_time(ctx.timing.between_courses))
-            except Exception:
-                pass
-
-        cert = await check_certificate(ctx)
-        if cert:
-            cert_id   = cert.get("id")
-            full_name = cert.get("userFullName", "Unknown")
-            await status_display.update_user(user_idx, f"✅ DONE: {full_name}", None, 100.0, 0)
-            await send_telegram(cert_id, full_name, user_idx)
-        else:
-            await status_display.update_user(user_idx, "❌ No certificate", None, 0, 0)
+        await status_display.update_user(user_idx, "❌ Failed after 3 attempts", None, 0, 0)
 
     except Exception as e:
-        await status_display.update_user(user_idx, f"❌ Fatal: {e}", None, 0, 0)
+        await status_display.update_user(user_idx, f"❌ Fatal: {str(e)[:20]}", None, 0, 0)
     finally:
         await ctx.close_session()
-
 
 async def main():
     global status_display
